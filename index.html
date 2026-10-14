@@ -30,22 +30,22 @@
             <div class="w-12 flex-shrink-0"></div>
         </header>
 
-        <div v-if="isBasicInfoComplete" class="bg-white/95 backdrop-blur-md border-b border-neutral-100 p-2.5 flex gap-2 sticky top-[68px] z-20 shadow-xs">
-            <button @click="goToSetup" class="bg-neutral-200 text-neutral-700 hover:bg-neutral-300 px-3 py-2.5 rounded-full text-[12px] transition flex items-center justify-center gap-1 font-bold flex-shrink-0">
+        <div class="bg-white/95 backdrop-blur-md border-b border-neutral-100 p-2.5 flex gap-2 sticky top-[68px] z-20 shadow-xs">
+            <button @click="switchTab('setup')" :class="[activeTab === 'setup' ? 'bg-[#721131] text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="px-3 py-2.5 rounded-full text-[12px] transition flex items-center justify-center gap-1 flex-shrink-0">
                 <i class="fa-solid fa-pen-to-square"></i> 基本資料
             </button>
-            <button @click="switchSection('clean')" :class="[currentSection === 'clean' ? 'bg-[#b07d62] text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="flex-1 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1.5">
+            <button @click="switchSection('clean')" :class="[activeTab === 'audit' && currentSection === 'clean' ? 'bg-[#b07d62] text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="flex-1 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-broom"></i> 清潔檢視
             </button>
-            <button @click="switchSection('service')" :class="[currentSection === 'service' ? 'bg-[#582f0e] text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="flex-1 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1.5">
+            <button @click="switchSection('service')" :class="[activeTab === 'audit' && currentSection === 'service' ? 'bg-[#582f0e] text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="flex-1 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-hand-holding-heart"></i> 服務檢視
             </button>
-            <button @click="switchSection('summary')" :class="[currentSection === 'summary' ? 'bg-neutral-900 text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="px-3 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1">
+            <button @click="switchTab('summary')" :class="[activeTab === 'summary' ? 'bg-neutral-900 text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="px-3 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1">
                 <i class="fa-solid fa-chart-pie"></i> 總結
             </button>
         </div>
 
-        <div v-if="isBasicInfoComplete && currentSection !== 'summary'" class="bg-white/95 backdrop-blur-md border-b border-neutral-100 px-3 py-2.5 overflow-x-auto scroll-smooth-x hide-scrollbar flex gap-2.5 sticky top-[116px] z-10 shadow-xs">
+        <div v-if="activeTab === 'audit'" class="bg-white/95 backdrop-blur-md border-b border-neutral-100 px-3 py-2.5 overflow-x-auto scroll-smooth-x hide-scrollbar flex gap-2.5 sticky top-[116px] z-10 shadow-xs">
             <button v-for="(cat, idx) in currentCategories" :key="cat.id" @click="selectCategory(idx)"
                 :class="[
                     currentCategoryIndex === idx ? (currentSection === 'clean' ? 'bg-[#b07d62] text-white font-bold shadow-md' : 'bg-[#582f0e] text-white font-bold shadow-md') : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200',
@@ -61,6 +61,7 @@
 
         <main class="flex-1 p-4 space-y-4">
             
+            <!-- Setup Tab -->
             <div v-if="activeTab === 'setup'" class="space-y-4">
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100 space-y-4">
                     <div class="border-b border-neutral-100 pb-3 flex justify-between items-center">
@@ -110,15 +111,13 @@
                     </div>
                 </div>
                 <button @click="startAudit" :disabled="!isBasicInfoValid" :class="[isBasicInfoValid ? 'bg-[#721131] text-white shadow-lg shadow-[#721131]/20 hover:bg-[#5c0e27]' : 'bg-neutral-200 text-neutral-400 cursor-not-allowed']" class="w-full py-4 rounded-2xl font-bold text-base transition flex items-center justify-center gap-2">
-                    {{ hasStartedAudit ? '返回稽核作業' : '開始執行稽核' }} <i class="fa-solid fa-arrow-right"></i>
+                    開始執行稽核 <i class="fa-solid fa-arrow-right"></i>
                 </button>
             </div>
 
+            <!-- Audit Tab -->
             <div v-else-if="activeTab === 'audit'" class="space-y-4">
                 <div class="flex justify-between items-center bg-white px-4 py-3 rounded-2xl border border-neutral-100 shadow-xs">
-                    <button @click="goToSetup" class="text-xs font-bold text-[#721131] bg-[#721131]/10 hover:bg-[#721131]/20 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-arrow-left"></i> 返回基本資料
-                    </button>
                     <span class="text-xs font-semibold text-neutral-500">{{ currentSection === 'clean' ? '【清潔檢視】' : '【服務檢視】' }}</span>
                 </div>
 
@@ -199,6 +198,7 @@
                 </div>
             </div>
 
+            <!-- Summary Tab -->
             <div v-else-if="activeTab === 'summary'" class="space-y-4">
                 <div class="bg-[#721131] text-white p-6 rounded-3xl shadow-lg text-center space-y-1 relative overflow-hidden">
                     <span class="text-xs text-[#f0d1dc]">{{ basicInfo.auditType }} 總得分</span>
@@ -240,7 +240,6 @@
                 const currentSection = ref('clean');
                 const currentCategoryIndex = ref(0);
                 const isSubmitting = ref(false);
-                const hasStartedAudit = ref(false);
 
                 const brandStoreSettings = {
                     '漢來蔬食': ['台北忠孝SOGO店', '台中廣三SOGO店', '台南南紡店', '高雄漢神巨蛋店', '高雄佛館店'],
@@ -519,7 +518,6 @@
 
                 const availableStores = computed(() => basicInfo.value.brand ? brandStoreSettings[basicInfo.value.brand] || [] : []);
                 const isBasicInfoValid = computed(() => basicInfo.value.date && basicInfo.value.brand && basicInfo.value.store && basicInfo.value.manager && basicInfo.value.dutyManager && basicInfo.value.auditor && basicInfo.value.auditType);
-                const isBasicInfoComplete = computed(() => activeTab.value !== 'setup');
                 const currentCategories = computed(() => currentSection.value === 'clean' ? cleanCategories.value : serviceCategories.value);
                 const currentCategory = computed(() => currentCategories.value[currentCategoryIndex.value] || currentCategories.value[0]);
 
@@ -648,7 +646,6 @@
                 
                 const startAudit = () => {
                     if (isBasicInfoValid.value) {
-                        hasStartedAudit.value = true;
                         activeTab.value = 'audit';
                         currentSection.value = 'clean';
                         currentCategoryIndex.value = 0;
@@ -656,21 +653,20 @@
                     }
                 };
 
-                const goToSetup = () => {
-                    activeTab.value = 'setup';
+                const switchTab = (tab) => {
+                    if (tab === 'setup') {
+                        activeTab.value = 'setup';
+                    } else if (tab === 'summary') {
+                        activeTab.value = 'summary';
+                        nextTick(() => initSignaturePad());
+                    }
                     window.scrollTo(0, 0);
                 };
 
                 const switchSection = (section) => {
-                    if (section === 'summary') { 
-                        activeTab.value = 'summary'; 
-                        currentSection.value = 'summary'; 
-                        nextTick(() => initSignaturePad()); 
-                    } else { 
-                        activeTab.value = 'audit'; 
-                        currentSection.value = section; 
-                        currentCategoryIndex.value = 0; 
-                    }
+                    activeTab.value = 'audit';
+                    currentSection.value = section;
+                    currentCategoryIndex.value = 0;
                     window.scrollTo(0, 0);
                 };
 
@@ -817,7 +813,7 @@
                     }
                 };
 
-                return { activeTab, currentSection, currentCategoryIndex, basicInfo, brandStoreSettings, availableStores, isBasicInfoValid, isBasicInfoComplete, currentCategories, currentCategory, cleanCategories, serviceCategories, getCategoryScore, cleanWeightedScore, serviceWeightedScore, overallScore, failedItems, isSubmitting, signatureCanvas, onBrandChange, startAudit, goToSetup, switchSection, selectCategory, setItemStatus, handlePhotoUpload, clearSignature, submitReport, isCategoryCompleted, hasStartedAudit };
+                return { activeTab, currentSection, currentCategoryIndex, basicInfo, brandStoreSettings, availableStores, isBasicInfoValid, currentCategories, currentCategory, cleanCategories, serviceCategories, getCategoryScore, cleanWeightedScore, serviceWeightedScore, overallScore, failedItems, isSubmitting, signatureCanvas, onBrandChange, startAudit, switchTab, switchSection, selectCategory, setItemStatus, handlePhotoUpload, clearSignature, submitReport, isCategoryCompleted };
             }
         }).mount('#app');
     </script>
