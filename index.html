@@ -21,7 +21,7 @@
         
         <header class="bg-[#721131] text-white px-4 py-3.5 sticky top-0 z-30 shadow-md flex items-center justify-between">
             <div class="flex items-center w-12 flex-shrink-0">
-                <img src="https://www.hilai-foods.com/img/logo.png" alt="Hi-Lai Foods Logo" class="h-9 w-auto object-contain bg-white/10 p-1 rounded-xl" onerror="this.style.display='none'">
+                <img src="https://www.hilai-foods.com/img/logo.png" alt="Hi-Lai Foods Logo" class="h-9 w-auto object-contain bg-white/10 p-1 rounded-2xl" onerror="this.style.display='none'">
             </div>
             <div class="text-center flex-1 px-1">
                 <div class="text-[10px] tracking-widest text-[#f0d1dc] mb-0.5 font-bold">HI-LAI FOODS</div>
@@ -61,7 +61,6 @@
 
         <main class="flex-1 p-4 space-y-4">
             
-            <!-- Setup Tab -->
             <div v-if="activeTab === 'setup'" class="space-y-4">
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100 space-y-4">
                     <div class="border-b border-neutral-100 pb-3 flex justify-between items-center">
@@ -115,12 +114,8 @@
                 </button>
             </div>
 
-            <!-- Audit Tab -->
             <div v-else-if="activeTab === 'audit'" class="space-y-4">
-                <div class="flex justify-between items-center bg-white px-4 py-3 rounded-2xl border border-neutral-100 shadow-xs">
-                    <span class="text-xs font-semibold text-neutral-500">{{ currentSection === 'clean' ? '【清潔檢視】' : '【服務檢視】' }}</span>
-                </div>
-
+                
                 <div v-if="currentCategory.isObservation" class="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100">
                     <div class="border-b border-neutral-100 pb-3 mb-4">
                         <h2 class="font-bold text-lg flex items-center gap-2" :class="[currentSection === 'clean' ? 'text-[#b07d62]' : 'text-[#582f0e]']">
@@ -198,7 +193,6 @@
                 </div>
             </div>
 
-            <!-- Summary Tab -->
             <div v-else-if="activeTab === 'summary'" class="space-y-4">
                 <div class="bg-[#721131] text-white p-6 rounded-3xl shadow-lg text-center space-y-1 relative overflow-hidden">
                     <span class="text-xs text-[#f0d1dc]">{{ basicInfo.auditType }} 總得分</span>
@@ -807,7 +801,7 @@
                             throw new Error(resultData.error || '後台執行發生未知錯誤');
                         }
                     } catch (err) {
-                        alert(`❌ 傳送失敗！\n\n原因：${err.message}`);
+                        alert(`❌ 傳ส่ง失敗！\n\n原因：${err.message}`);
                     } finally {
                         isSubmitting.value = false;
                     }
