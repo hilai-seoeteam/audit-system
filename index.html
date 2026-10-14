@@ -13,29 +13,34 @@
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .scroll-smooth-x { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
         canvas { touch-action: none; } 
+        [v-cloak] { display: none; }
     </style>
 </head>
 <body class="pb-16 bg-[#f7f5f6]">
-    <div id="app" class="max-w-md mx-auto min-h-screen bg-[#fcfbfa] shadow-xl flex flex-col relative rounded-b-3xl overflow-hidden">
+    <div id="app" class="max-w-md mx-auto min-h-screen bg-[#fcfbfa] shadow-xl flex flex-col relative rounded-b-3xl overflow-hidden" v-cloak>
         
         <header class="bg-[#721131] text-white px-4 py-3.5 sticky top-0 z-30 shadow-md flex items-center justify-between">
-            <div class="flex items-center">
+            <div class="flex items-center w-12 flex-shrink-0">
                 <img src="https://www.hilai-foods.com/img/logo.png" alt="Hi-Lai Foods Logo" class="h-9 w-auto object-contain bg-white/10 p-1 rounded-xl" onerror="this.style.display='none'">
             </div>
-            <div class="text-center flex-1 pr-9">
+            <div class="text-center flex-1 px-1">
                 <div class="text-[10px] tracking-widest text-[#f0d1dc] mb-0.5 font-bold">HI-LAI FOODS</div>
                 <h1 class="text-base font-black tracking-wider text-white leading-tight">漢來美食 餐廳服務稽核系統</h1>
             </div>
+            <div class="w-12 flex-shrink-0"></div>
         </header>
 
         <div v-if="isBasicInfoComplete" class="bg-white/95 backdrop-blur-md border-b border-neutral-100 p-2.5 flex gap-2 sticky top-[68px] z-20 shadow-xs">
-            <button @click="switchSection('clean')" :class="[currentSection === 'clean' ? 'bg-[#721131] text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="flex-1 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1.5">
+            <button @click="goToSetup" class="bg-neutral-200 text-neutral-700 hover:bg-neutral-300 px-3 py-2.5 rounded-full text-[12px] transition flex items-center justify-center gap-1 font-bold flex-shrink-0">
+                <i class="fa-solid fa-pen-to-square"></i> 基本資料
+            </button>
+            <button @click="switchSection('clean')" :class="[currentSection === 'clean' ? 'bg-[#b07d62] text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="flex-1 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-broom"></i> 清潔檢視
             </button>
-            <button @click="switchSection('service')" :class="[currentSection === 'service' ? 'bg-[#932448] text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="flex-1 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1.5">
+            <button @click="switchSection('service')" :class="[currentSection === 'service' ? 'bg-[#582f0e] text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="flex-1 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1.5">
                 <i class="fa-solid fa-hand-holding-heart"></i> 服務檢視
             </button>
-            <button @click="switchSection('summary')" :class="[currentSection === 'summary' ? 'bg-neutral-900 text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="px-4 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1.5">
+            <button @click="switchSection('summary')" :class="[currentSection === 'summary' ? 'bg-neutral-900 text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="px-3 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1">
                 <i class="fa-solid fa-chart-pie"></i> 總結
             </button>
         </div>
@@ -43,7 +48,7 @@
         <div v-if="isBasicInfoComplete && currentSection !== 'summary'" class="bg-white/95 backdrop-blur-md border-b border-neutral-100 px-3 py-2.5 overflow-x-auto scroll-smooth-x hide-scrollbar flex gap-2.5 sticky top-[116px] z-10 shadow-xs">
             <button v-for="(cat, idx) in currentCategories" :key="cat.id" @click="selectCategory(idx)"
                 :class="[
-                    currentCategoryIndex === idx ? (currentSection === 'clean' ? 'bg-[#721131] text-white font-bold shadow-md' : 'bg-[#932448] text-white font-bold shadow-md') : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200',
+                    currentCategoryIndex === idx ? (currentSection === 'clean' ? 'bg-[#b07d62] text-white font-bold shadow-md' : 'bg-[#582f0e] text-white font-bold shadow-md') : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200',
                     (cat.id === 'clean_G' && !basicInfo.hasRestroom) ? 'opacity-40 bg-neutral-200 text-neutral-400' : ''
                 ]"
                 class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition flex-shrink-0 flex items-center gap-1.5">
@@ -56,10 +61,9 @@
 
         <main class="flex-1 p-4 space-y-4">
             
-            <!-- Setup Form Tab -->
             <div v-if="activeTab === 'setup'" class="space-y-4">
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100 space-y-4">
-                    <div class="border-b border-neutral-100 pb-3">
+                    <div class="border-b border-neutral-100 pb-3 flex justify-between items-center">
                         <h2 class="font-bold text-neutral-800 text-base flex items-center gap-2"><i class="fa-solid fa-clipboard-user text-[#721131]"></i> 稽核基本資訊</h2>
                     </div>
                     
@@ -106,20 +110,26 @@
                     </div>
                 </div>
                 <button @click="startAudit" :disabled="!isBasicInfoValid" :class="[isBasicInfoValid ? 'bg-[#721131] text-white shadow-lg shadow-[#721131]/20 hover:bg-[#5c0e27]' : 'bg-neutral-200 text-neutral-400 cursor-not-allowed']" class="w-full py-4 rounded-2xl font-bold text-base transition flex items-center justify-center gap-2">
-                    開始執行稽核 <i class="fa-solid fa-arrow-right"></i>
+                    {{ hasStartedAudit ? '返回稽核作業' : '開始執行稽核' }} <i class="fa-solid fa-arrow-right"></i>
                 </button>
             </div>
 
-            <!-- Audit Inspection Tab -->
             <div v-else-if="activeTab === 'audit'" class="space-y-4">
+                <div class="flex justify-between items-center bg-white px-4 py-3 rounded-2xl border border-neutral-100 shadow-xs">
+                    <button @click="goToSetup" class="text-xs font-bold text-[#721131] bg-[#721131]/10 hover:bg-[#721131]/20 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-arrow-left"></i> 返回基本資料
+                    </button>
+                    <span class="text-xs font-semibold text-neutral-500">{{ currentSection === 'clean' ? '【清潔檢視】' : '【服務檢視】' }}</span>
+                </div>
+
                 <div v-if="currentCategory.isObservation" class="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100">
                     <div class="border-b border-neutral-100 pb-3 mb-4">
-                        <h2 class="font-bold text-lg flex items-center gap-2 text-[#721131]">
+                        <h2 class="font-bold text-lg flex items-center gap-2" :class="[currentSection === 'clean' ? 'text-[#b07d62]' : 'text-[#582f0e]']">
                             <i class="fa-solid fa-pen"></i> {{ currentCategory.title }}
                         </h2>
                     </div>
-                    <textarea v-if="currentSection === 'clean'" v-model="basicInfo.cleanObservation" rows="6" placeholder="紀錄清潔相關特殊觀察..." class="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-[#721131]"></textarea>
-                    <textarea v-else v-model="basicInfo.serviceObservation" rows="6" placeholder="紀錄服務相關特殊觀察..." class="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-[#721131]"></textarea>
+                    <textarea v-if="currentSection === 'clean'" v-model="basicInfo.cleanObservation" rows="6" placeholder="紀錄清潔相關特殊觀察..." class="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-[#b07d62]"></textarea>
+                    <textarea v-else v-model="basicInfo.serviceObservation" rows="6" placeholder="紀錄服務相關特殊觀察..." class="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-[#582f0e]"></textarea>
                 </div>
 
                 <div v-else>
@@ -127,7 +137,7 @@
                         <h2 class="font-bold text-lg text-neutral-800">{{ currentCategory.title }}</h2>
                         <div class="text-right">
                             <span class="text-[10px] text-neutral-400 block">實得分數</span>
-                            <span class="text-xl font-black text-[#721131]">{{ getCategoryScore(currentCategory) }}/{{ currentCategory.maxScore }}</span>
+                            <span class="text-xl font-black" :class="[currentSection === 'clean' ? 'text-[#b07d62]' : 'text-[#582f0e]']">{{ getCategoryScore(currentCategory) }}/{{ currentCategory.maxScore }}</span>
                         </div>
                     </div>
 
@@ -136,7 +146,7 @@
                     </div>
 
                     <div v-else v-for="group in currentCategory.groups" :key="group.groupName" class="mb-5 space-y-3.5">
-                        <div class="text-[13px] font-bold text-neutral-600 pl-3 border-l-4 border-[#721131]">{{ group.groupName }}</div>
+                        <div class="text-[13px] font-bold text-neutral-600 pl-3 border-l-4" :class="[currentSection === 'clean' ? 'border-[#b07d62]' : 'border-[#582f0e]']">{{ group.groupName }}</div>
                         <div v-for="item in group.items" :key="item.id" :id="'item-' + item.id" :class="[item.status === null ? 'border-amber-200 bg-amber-50/20' : 'border-neutral-100 bg-white']" class="p-4 rounded-3xl shadow-xs border transition-all">
                             <div class="flex items-start gap-2.5">
                                 <span class="text-[11px] font-black px-2 py-0.5 bg-neutral-100 border border-neutral-200 rounded-full text-neutral-600 mt-0.5">{{ item.id }}</span>
@@ -149,7 +159,7 @@
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-2.5 pt-3.5">
-                                <button @click="setItemStatus(item, 'pass')" :class="[item.status === 'pass' ? 'bg-[#721131] text-white font-bold border-[#721131] shadow-sm' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100']" class="py-2.5 rounded-2xl border text-[13px] flex items-center justify-center gap-1.5 transition">
+                                <button @click="setItemStatus(item, 'pass')" :class="[item.status === 'pass' ? (currentSection === 'clean' ? 'bg-[#b07d62] border-[#b07d62]' : 'bg-[#582f0e] border-[#582f0e]') + ' text-white font-bold shadow-sm' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100']" class="py-2.5 rounded-2xl border text-[13px] flex items-center justify-center gap-1.5 transition">
                                     <i class="fa-solid fa-circle-check"></i> 合格
                                 </button>
                                 <button @click="setItemStatus(item, 'fail')" :class="[item.status === 'fail' ? 'bg-rose-600 text-white font-bold border-rose-600 shadow-sm' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100']" class="py-2.5 rounded-2xl border text-[13px] flex items-center justify-center gap-1.5 transition">
@@ -159,12 +169,22 @@
                             <div v-if="item.status === 'fail'" class="mt-3.5 p-3.5 bg-rose-50/60 rounded-2xl border border-rose-100 space-y-3">
                                 <div class="text-[11px] font-bold text-rose-800 leading-tight">不合格</div>
                                 <div>
-                                    <label class="block text-[11px] font-bold text-rose-800 mb-1">缺失說明 * (必填)</label>
+                                    <label class="block text-[11px] font-bold text-rose-800 mb-1">缺失說明 <span class="text-rose-800 font-bold">* (必填)</span></label>
                                     <textarea v-model="item.note" rows="2" placeholder="請說明缺失狀況..." class="w-full p-2.5 bg-white border border-rose-200 rounded-xl text-sm focus:outline-none focus:border-rose-400"></textarea>
                                 </div>
-                                <div>
+                                <div v-if="currentSection === 'clean'">
                                     <div class="flex justify-between items-center mb-1">
-                                        <label class="block text-[11px] font-bold text-rose-800">上傳照片 <span class="text-rose-800 font-bold">{{ currentSection === 'clean' ? '* (必填)' : '(選填)' }}</span></label>
+                                        <label class="block text-[11px] font-bold text-rose-800">上傳照片 <span class="text-rose-800 font-bold">* (必填)</span></label>
+                                        <span v-if="item.photo" class="text-[10px] text-emerald-700 font-bold"><i class="fa-solid fa-check"></i> 已上傳</span>
+                                    </div>
+                                    <label class="cursor-pointer bg-white border border-dashed border-rose-300 text-rose-600 px-3 py-2.5 rounded-xl text-[12px] font-bold flex justify-center items-center gap-1.5 hover:bg-rose-50 transition">
+                                        <i class="fa-solid fa-camera"></i> {{ item.photo ? '重拍/重選照片' : '點此拍攝照片' }}
+                                        <input type="file" accept="image/*" class="hidden" @change="handlePhotoUpload($event, item)">
+                                    </label>
+                                </div>
+                                <div v-else>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-[11px] font-bold text-rose-800">上傳照片 <span class="text-rose-800 font-bold">(選填)</span></label>
                                         <span v-if="item.photo" class="text-[10px] text-emerald-700 font-bold"><i class="fa-solid fa-check"></i> 已上傳</span>
                                     </div>
                                     <label class="cursor-pointer bg-white border border-dashed border-rose-300 text-rose-600 px-3 py-2.5 rounded-xl text-[12px] font-bold flex justify-center items-center gap-1.5 hover:bg-rose-50 transition">
@@ -179,7 +199,6 @@
                 </div>
             </div>
 
-            <!-- Summary Tab -->
             <div v-else-if="activeTab === 'summary'" class="space-y-4">
                 <div class="bg-[#721131] text-white p-6 rounded-3xl shadow-lg text-center space-y-1 relative overflow-hidden">
                     <span class="text-xs text-[#f0d1dc]">{{ basicInfo.auditType }} 總得分</span>
@@ -190,8 +209,8 @@
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
-                    <div class="bg-white p-4 rounded-3xl border border-neutral-100 shadow-sm"><div class="text-xs text-neutral-500 mb-1">清潔加權 (40%)</div><div class="text-2xl font-black text-[#721131]">{{ cleanWeightedScore }} 分</div></div>
-                    <div class="bg-white p-4 rounded-3xl border border-neutral-100 shadow-sm"><div class="text-xs text-neutral-500 mb-1">服務加權 (60%)</div><div class="text-2xl font-black text-[#932448]">{{ serviceWeightedScore }} 分</div></div>
+                    <div class="bg-white p-4 rounded-3xl border border-neutral-100 shadow-sm"><div class="text-xs text-neutral-500 mb-1">清潔加權 (40%)</div><div class="text-2xl font-black text-[#b07d62]">{{ cleanWeightedScore }} 分</div></div>
+                    <div class="bg-white p-4 rounded-3xl border border-neutral-100 shadow-sm"><div class="text-xs text-neutral-500 mb-1">服務加權 (60%)</div><div class="text-2xl font-black text-[#582f0e]">{{ serviceWeightedScore }} 分</div></div>
                 </div>
                 <div class="bg-white p-5 rounded-3xl border border-neutral-100 shadow-sm space-y-2.5">
                     <div class="flex justify-between items-center"><h3 class="font-bold text-[14px] text-neutral-800">檢視主管簽名 *</h3><button @click="clearSignature" class="text-[11px] bg-neutral-100 px-3 py-1 rounded-full text-neutral-600 hover:bg-neutral-200 transition">清除重簽</button></div>
@@ -221,6 +240,7 @@
                 const currentSection = ref('clean');
                 const currentCategoryIndex = ref(0);
                 const isSubmitting = ref(false);
+                const hasStartedAudit = ref(false);
 
                 const brandStoreSettings = {
                     '漢來蔬食': ['台北忠孝SOGO店', '台中廣三SOGO店', '台南南紡店', '高雄漢神巨蛋店', '高雄佛館店'],
@@ -241,8 +261,8 @@
                     auditor: '總部稽核員', 
                     auditType: '總部稽核', 
                     hasRestroom: true, 
-                    cleanObservation: '測試清潔觀察', 
-                    serviceObservation: '測試服務觀察' 
+                    cleanObservation: '', 
+                    serviceObservation: '' 
                 });
 
                 const signatureCanvas = ref(null);
@@ -621,7 +641,6 @@
                             }
                         }
                     }
-
                     return true;
                 };
 
@@ -629,6 +648,7 @@
                 
                 const startAudit = () => {
                     if (isBasicInfoValid.value) {
+                        hasStartedAudit.value = true;
                         activeTab.value = 'audit';
                         currentSection.value = 'clean';
                         currentCategoryIndex.value = 0;
@@ -636,9 +656,13 @@
                     }
                 };
 
+                const goToSetup = () => {
+                    activeTab.value = 'setup';
+                    window.scrollTo(0, 0);
+                };
+
                 const switchSection = (section) => {
                     if (section === 'summary') { 
-                        if (!validateAllRequiredFields()) return;
                         activeTab.value = 'summary'; 
                         currentSection.value = 'summary'; 
                         nextTick(() => initSignaturePad()); 
@@ -753,6 +777,10 @@
 
                 const submitReport = async () => {
                     if (!validateAllRequiredFields()) return;
+                    if (!hasSignature.value) {
+                        alert('請先完成主管簽名！');
+                        return;
+                    }
 
                     isSubmitting.value = true;
                     const payload = {
@@ -770,7 +798,7 @@
                         const resText = await response.text();
                         
                         if (resText.includes('<!DOCTYPE html>') || resText.includes('<html')) {
-                            throw new Error('伺服器連線遭拒，請確認 Google Apps Script 的權限是否已設定為公式「所有人 (Anyone)」。');
+                            throw new Error('伺服器連線遭拒，請確認 Google Apps Script 的權限是否已設定為「所有人 (Anyone)」。');
                         }
 
                         let resultData = {};
@@ -789,7 +817,7 @@
                     }
                 };
 
-                return { activeTab, currentSection, currentCategoryIndex, basicInfo, brandStoreSettings, availableStores, isBasicInfoValid, isBasicInfoComplete, currentCategories, currentCategory, cleanCategories, serviceCategories, getCategoryScore, cleanWeightedScore, serviceWeightedScore, overallScore, failedItems, isSubmitting, signatureCanvas, onBrandChange, startAudit, switchSection, selectCategory, setItemStatus, handlePhotoUpload, clearSignature, submitReport, isCategoryCompleted };
+                return { activeTab, currentSection, currentCategoryIndex, basicInfo, brandStoreSettings, availableStores, isBasicInfoValid, isBasicInfoComplete, currentCategories, currentCategory, cleanCategories, serviceCategories, getCategoryScore, cleanWeightedScore, serviceWeightedScore, overallScore, failedItems, isSubmitting, signatureCanvas, onBrandChange, startAudit, goToSetup, switchSection, selectCategory, setItemStatus, handlePhotoUpload, clearSignature, submitReport, isCategoryCompleted, hasStartedAudit };
             }
         }).mount('#app');
     </script>
