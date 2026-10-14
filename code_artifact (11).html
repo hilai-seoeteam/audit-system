@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>漢來美食 餐廳服務稽核系統</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f7f5f6; color: #333; -webkit-tap-highlight-color: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .scroll-smooth-x { -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+        canvas { touch-action: none; } 
+    </style>
+</head>
+<body class="pb-16 bg-[#f7f5f6]">
+    <div id="app" class="max-w-md mx-auto min-h-screen bg-[#fcfbfa] shadow-xl flex flex-col relative rounded-b-3xl overflow-hidden">
+        
+        <header class="bg-[#721131] text-white px-4 py-3.5 sticky top-0 z-30 shadow-md flex items-center justify-between">
+            <div class="flex items-center">
+                <img src="https://www.hilai-foods.com/img/logo.png" alt="Hi-Lai Foods Logo" class="h-9 w-auto object-contain bg-white/10 p-1 rounded-xl" onerror="this.style.display='none'">
+            </div>
+            <div class="text-center flex-1 pr-9">
+                <div class="text-[10px] tracking-widest text-[#f0d1dc] mb-0.5 font-bold">HI-LAI FOODS</div>
+                <h1 class="text-base font-black tracking-wider text-white leading-tight">漢來美食 餐廳服務稽核系統</h1>
+            </div>
+        </header>
+
+        <div v-if="isBasicInfoComplete" class="bg-white/95 backdrop-blur-md border-b border-neutral-100 p-2.5 flex gap-2 sticky top-[68px] z-20 shadow-xs">
+            <button @click="switchSection('clean')" :class="[currentSection === 'clean' ? 'bg-[#721131] text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="flex-1 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-broom"></i> 清潔檢視
+            </button>
+            <button @click="switchSection('service')" :class="[currentSection === 'service' ? 'bg-[#932448] text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="flex-1 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-hand-holding-heart"></i> 服務檢視
+            </button>
+            <button @click="switchSection('summary')" :class="[currentSection === 'summary' ? 'bg-neutral-900 text-white font-bold shadow-md' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200']" class="px-4 py-2.5 rounded-full text-[13px] transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-chart-pie"></i> 總結
+            </button>
+        </div>
+
+        <div v-if="isBasicInfoComplete && currentSection !== 'summary'" class="bg-white/95 backdrop-blur-md border-b border-neutral-100 px-3 py-2.5 overflow-x-auto scroll-smooth-x hide-scrollbar flex gap-2.5 sticky top-[116px] z-10 shadow-xs">
+            <button v-for="(cat, idx) in currentCategories" :key="cat.id" @click="selectCategory(idx)"
+                :class="[
+                    currentCategoryIndex === idx ? (currentSection === 'clean' ? 'bg-[#721131] text-white font-bold shadow-md' : 'bg-[#932448] text-white font-bold shadow-md') : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200',
+                    (cat.id === 'clean_G' && !basicInfo.hasRestroom) ? 'opacity-40 bg-neutral-200 text-neutral-400' : ''
+                ]"
+                class="px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition flex-shrink-0 flex items-center gap-1.5">
+                <span>{{ cat.tabName }}</span>
+                <span v-if="cat.id === 'clean_G' && !basicInfo.hasRestroom" class="text-[10px] bg-neutral-300 text-neutral-600 px-1.5 rounded-full">(免檢)</span>
+                <span v-if="!cat.isObservation && (cat.id !== 'clean_G' || basicInfo.hasRestroom) && !isCategoryCompleted(cat)" class="w-2 h-2 rounded-full bg-rose-500 ml-1"></span>
+                <i v-else-if="!cat.isObservation" class="fa-solid fa-check text-[10px] text-emerald-300 ml-1"></i>
+            </button>
+        </div>
+
+        <main class="flex-1 p-4 space-y-4">
+            
+            <!-- Setup Form Tab -->
+            <div v-if="activeTab === 'setup'" class="space-y-4">
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100 space-y-4">
+                    <div class="border-b border-neutral-100 pb-3">
+                        <h2 class="font-bold text-neutral-800 text-base flex items-center gap-2"><i class="fa-solid fa-clipboard-user text-[#721131]"></i> 稽核基本資訊</h2>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-medium text-neutral-600 mb-1.5">檢視日期 *</label>
+                        <input type="date" v-model="basicInfo.date" class="w-full p-3 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-[#721131]">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-neutral-600 mb-1.5">稽核類型 *</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button type="button" @click="basicInfo.auditType = '總部稽核'" :class="[basicInfo.auditType === '總部稽核' ? 'bg-[#721131] text-white font-bold shadow-md border-[#721131]' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100']" class="py-3 rounded-2xl border text-sm transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-building-shield"></i> 總部稽核
+                            </button>
+                            <button type="button" @click="basicInfo.auditType = '分店稽核'" :class="[basicInfo.auditType === '分店稽核' ? 'bg-[#721131] text-white font-bold shadow-md border-[#721131]' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100']" class="py-3 rounded-2xl border text-sm transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-store"></i> 分店稽核
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-neutral-600 mb-1.5">品牌 *</label>
+                        <select v-model="basicInfo.brand" @change="onBrandChange" class="w-full p-3 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-[#721131]">
+                            <option value="">-- 請選擇品牌 --</option>
+                            <option v-for="(stores, brand) in brandStoreSettings" :key="brand" :value="brand">{{ brand }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-neutral-600 mb-1.5">分店 *</label>
+                        <select v-model="basicInfo.store" :disabled="!basicInfo.brand" class="w-full p-3 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none disabled:bg-neutral-100">
+                            <option value="">-- 請選擇分店 --</option>
+                            <option v-for="store in availableStores" :key="store" :value="store">{{ store }}</option>
+                        </select>
+                    </div>
+                    <div><label class="block text-xs font-medium text-neutral-600 mb-1.5">餐廳經理 *</label><input type="text" v-model="basicInfo.manager" placeholder="輸入姓名" class="w-full p-3 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-[#721131]"></div>
+                    <div><label class="block text-xs font-medium text-neutral-600 mb-1.5">值班主管 *</label><input type="text" v-model="basicInfo.dutyManager" placeholder="輸入姓名" class="w-full p-3 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-[#721131]"></div>
+                    <div><label class="block text-xs font-medium text-neutral-600 mb-1.5">檢視者 *</label><input type="text" v-model="basicInfo.auditor" placeholder="輸入姓名" class="w-full p-3 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-[#721131]"></div>
+
+                    <div class="pt-2 border-t border-neutral-100">
+                        <label class="flex items-center justify-between cursor-pointer bg-neutral-50 p-4 rounded-2xl border border-neutral-200">
+                            <div><span class="text-sm font-bold text-neutral-700 block">有獨立洗洗手間？</span><span class="text-[10px] text-neutral-500">若無，清潔 G 項將自動標示免檢</span></div>
+                            <input type="checkbox" v-model="basicInfo.hasRestroom" class="w-5 h-5 accent-[#721131] rounded-lg">
+                        </label>
+                    </div>
+                </div>
+                <button @click="startAudit" :disabled="!isBasicInfoValid" :class="[isBasicInfoValid ? 'bg-[#721131] text-white shadow-lg shadow-[#721131]/20 hover:bg-[#5c0e27]' : 'bg-neutral-200 text-neutral-400 cursor-not-allowed']" class="w-full py-4 rounded-2xl font-bold text-base transition flex items-center justify-center gap-2">
+                    開始執行稽核 <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- Audit Inspection Tab -->
+            <div v-else-if="activeTab === 'audit'" class="space-y-4">
+                <div v-if="currentCategory.isObservation" class="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100">
+                    <div class="border-b border-neutral-100 pb-3 mb-4">
+                        <h2 class="font-bold text-lg flex items-center gap-2 text-[#721131]">
+                            <i class="fa-solid fa-pen"></i> {{ currentCategory.title }}
+                        </h2>
+                    </div>
+                    <textarea v-if="currentSection === 'clean'" v-model="basicInfo.cleanObservation" rows="6" placeholder="紀錄清潔相關特殊觀察..." class="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-[#721131]"></textarea>
+                    <textarea v-else v-model="basicInfo.serviceObservation" rows="6" placeholder="紀錄服務相關特殊觀察..." class="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-[#721131]"></textarea>
+                </div>
+
+                <div v-else>
+                    <div class="bg-white p-5 rounded-3xl shadow-sm border border-neutral-100 mb-4 flex justify-between items-center">
+                        <h2 class="font-bold text-lg text-neutral-800">{{ currentCategory.title }}</h2>
+                        <div class="text-right">
+                            <span class="text-[10px] text-neutral-400 block">實得分數</span>
+                            <span class="text-xl font-black text-[#721131]">{{ getCategoryScore(currentCategory) }}/{{ currentCategory.maxScore }}</span>
+                        </div>
+                    </div>
+
+                    <div v-if="currentCategory.id === 'clean_G' && !basicInfo.hasRestroom" class="p-8 text-center bg-neutral-100 rounded-3xl border border-neutral-200 text-neutral-500">
+                        <i class="fa-solid fa-ban text-3xl mb-2"></i><br>本門市無獨立洗洗手間，此大項免檢。
+                    </div>
+
+                    <div v-else v-for="group in currentCategory.groups" :key="group.groupName" class="mb-5 space-y-3.5">
+                        <div class="text-[13px] font-bold text-neutral-600 pl-3 border-l-4 border-[#721131]">{{ group.groupName }}</div>
+                        <div v-for="item in group.items" :key="item.id" :id="'item-' + item.id" :class="[item.status === null ? 'border-amber-200 bg-amber-50/20' : 'border-neutral-100 bg-white']" class="p-4 rounded-3xl shadow-xs border transition-all">
+                            <div class="flex items-start gap-2.5">
+                                <span class="text-[11px] font-black px-2 py-0.5 bg-neutral-100 border border-neutral-200 rounded-full text-neutral-600 mt-0.5">{{ item.id }}</span>
+                                <div class="flex-1">
+                                    <p class="text-[14px] font-medium text-neutral-800 leading-snug"><span v-if="item.isMajor" class="text-rose-600 font-black mr-0.5 text-base">※</span>{{ item.text }}</p>
+                                    <div class="mt-1.5 flex flex-wrap gap-1.5">
+                                        <span v-if="item.isMajor" class="text-[10px] text-rose-700 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full font-medium">重點題 (扣{{ currentSection === 'clean' ? 4 : 8 }}分)</span>
+                                        <span v-else class="text-[10px] text-neutral-500 bg-neutral-100 border border-neutral-200 px-2 py-0.5 rounded-full font-medium">一般題 (扣{{ currentSection === 'clean' ? 2 : 5 }}分)</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2.5 pt-3.5">
+                                <button @click="setItemStatus(item, 'pass')" :class="[item.status === 'pass' ? 'bg-[#721131] text-white font-bold border-[#721131] shadow-sm' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100']" class="py-2.5 rounded-2xl border text-[13px] flex items-center justify-center gap-1.5 transition">
+                                    <i class="fa-solid fa-circle-check"></i> 合格
+                                </button>
+                                <button @click="setItemStatus(item, 'fail')" :class="[item.status === 'fail' ? 'bg-rose-600 text-white font-bold border-rose-600 shadow-sm' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:bg-neutral-100']" class="py-2.5 rounded-2xl border text-[13px] flex items-center justify-center gap-1.5 transition">
+                                    <i class="fa-solid fa-circle-xmark"></i> 不合格
+                                </button>
+                            </div>
+                            <div v-if="item.status === 'fail'" class="mt-3.5 p-3.5 bg-rose-50/60 rounded-2xl border border-rose-100 space-y-3">
+                                <div class="text-[11px] font-bold text-rose-800 leading-tight">不合格</div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-rose-800 mb-1">缺失說明 * (必填)</label>
+                                    <textarea v-model="item.note" rows="2" placeholder="請說明缺失狀況..." class="w-full p-2.5 bg-white border border-rose-200 rounded-xl text-sm focus:outline-none focus:border-rose-400"></textarea>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-[11px] font-bold text-rose-800">上傳照片 <span class="text-rose-800 font-bold">{{ currentSection === 'clean' ? '* (必填)' : '(選填)' }}</span></label>
+                                        <span v-if="item.photo" class="text-[10px] text-emerald-700 font-bold"><i class="fa-solid fa-check"></i> 已上傳</span>
+                                    </div>
+                                    <label class="cursor-pointer bg-white border border-dashed border-rose-300 text-rose-600 px-3 py-2.5 rounded-xl text-[12px] font-bold flex justify-center items-center gap-1.5 hover:bg-rose-50 transition">
+                                        <i class="fa-solid fa-camera"></i> {{ item.photo ? '重拍/重選照片' : '點此拍攝照片' }}
+                                        <input type="file" accept="image/*" class="hidden" @change="handlePhotoUpload($event, item)">
+                                    </label>
+                                </div>
+                                <div v-if="item.photo" class="text-center"><img :src="item.photo" class="max-h-24 w-auto mx-auto rounded-xl border border-neutral-300 shadow-xs"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Tab -->
+            <div v-else-if="activeTab === 'summary'" class="space-y-4">
+                <div class="bg-[#721131] text-white p-6 rounded-3xl shadow-lg text-center space-y-1 relative overflow-hidden">
+                    <span class="text-xs text-[#f0d1dc]">{{ basicInfo.auditType }} 總得分</span>
+                    <div class="text-5xl font-black text-amber-300">{{ overallScore }}</div>
+                    <div class="text-[13px] text-neutral-200 pt-2 border-t border-white/10 mt-2">
+                        最終評定：<span :class="[overallScore >= 70 ? 'text-emerald-300 font-bold' : 'text-rose-300 font-bold']">{{ overallScore >= 70 ? '合格' : '不合格' }}</span>
+                        <div v-if="overallScore < 70" class="text-xs text-rose-200 mt-1 font-bold">請安排行動計畫，確實改善！</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-white p-4 rounded-3xl border border-neutral-100 shadow-sm"><div class="text-xs text-neutral-500 mb-1">清潔加權 (40%)</div><div class="text-2xl font-black text-[#721131]">{{ cleanWeightedScore }} 分</div></div>
+                    <div class="bg-white p-4 rounded-3xl border border-neutral-100 shadow-sm"><div class="text-xs text-neutral-500 mb-1">服務加權 (60%)</div><div class="text-2xl font-black text-[#932448]">{{ serviceWeightedScore }} 分</div></div>
+                </div>
+                <div class="bg-white p-5 rounded-3xl border border-neutral-100 shadow-sm space-y-2.5">
+                    <div class="flex justify-between items-center"><h3 class="font-bold text-[14px] text-neutral-800">檢視主管簽名 *</h3><button @click="clearSignature" class="text-[11px] bg-neutral-100 px-3 py-1 rounded-full text-neutral-600 hover:bg-neutral-200 transition">清除重簽</button></div>
+                    <div class="border border-neutral-200 rounded-2xl bg-neutral-50 touch-none overflow-hidden"><canvas ref="signatureCanvas" width="340" height="120" class="w-full h-28 cursor-crosshair block"></canvas></div>
+                </div>
+                <button @click="submitReport" :disabled="isSubmitting" class="w-full py-4 bg-neutral-900 text-amber-300 hover:bg-black rounded-2xl font-bold text-[15px] shadow-lg transition flex items-center justify-center gap-2 mt-2 disabled:opacity-70">
+                    <i v-if="isSubmitting" class="fa-solid fa-spinner fa-spin"></i><i v-else class="fa-solid fa-cloud-arrow-up"></i>
+                    {{ isSubmitting ? '報表傳送中...' : '產出並上傳稽核報告 (自動生成 PDF)' }}
+                </button>
+            </div>
+        </main>
+
+        <footer class="py-4 text-center text-neutral-400 text-[11px] border-t border-neutral-100 mt-auto space-y-0.5">
+            <div class="font-bold text-neutral-600">服務體驗與營運協同團隊</div>
+            <div>Service Experience & Operations Enablement Team</div>
+        </footer>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const googleScriptUrl = 'https://script.google.com/macros/s/AKfycbxQTiAMjsnMdiAWXSVECdcjTwGRtUUeojayOWwD9-tCbgGrutLiJcTcZXKzEif8YhDy/exec';
+
+                const activeTab = ref('setup');
+                const currentSection = ref('clean');
+                const currentCategoryIndex = ref(0);
+                const isSubmitting = ref(false);
+
+                const brandStoreSettings = {
+                    '漢來蔬食': ['台北忠孝SOGO店', '台中廣三SOGO店', '台南南紡店', '高雄漢神巨蛋店', '高雄佛館店'],
+                    '樂蔬': ['台中漢神洲際店'],
+                    '漢來上海湯包': ['台北LaLaport南港店', '台北Dream Plaza店', '桃園台茂店', '新竹遠百竹北店', '台中漢神洲際店', '台南南紡店', '台南誠品台南店', '高雄夢時代店'],
+                    '溜溜酸菜魚': ['桃園中壢SOGO店', '高雄SOGO店', '高雄夢時代店'],
+                    '上菜片皮鸭': ['桃園台茂店', '新竹遠百竹北店', '高雄夢時代店'],
+                    '漢來軒': ['台中廣三SOGO店'],
+                    '常粵': ['高雄富民店']
+                };
+
+                const basicInfo = ref({ 
+                    date: new Date().toISOString().split('T')[0], 
+                    brand: '漢來蔬食', 
+                    store: '高雄漢神巨蛋店', 
+                    manager: '王經理', 
+                    dutyManager: '李主管', 
+                    auditor: '總部稽核員', 
+                    auditType: '總部稽核', 
+                    hasRestroom: true, 
+                    cleanObservation: '測試清潔觀察', 
+                    serviceObservation: '測試服務觀察' 
+                });
+
+                const signatureCanvas = ref(null);
+                let isDrawing = false;
+                const hasSignature = ref(false);
+
+                const cleanCategories = ref([
+                    { id: 'clean_A', title: 'A. 大門門面 (18項)', tabName: 'A.大門', maxScore: 20, groups: [
+                        { groupName: '環境檢視', items: [
+                            { id: 'A1', text: '城立柱/黑桃柱：乾淨，效能完好，無焦黑及搖晃，盤狀整齊', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'A2', text: '門斗走廊/入口處/櫃台前走廊乾淨', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'A3', text: '外圍櫥窗/牆面/燈飾/玻璃：乾淨、外觀完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'A4', text: '窗戶/窗台/玻璃/窗框/大門/門把/手把/雨棚/自動門：乾淨、效能完好', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'A5', text: '營業時間告示(牌)：營業時間正確，鐵條無，零件無鬆動，效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'A6', text: '張貼招牌/行銷活動海報/賣場文宣：齊平張貼，彙整說明憑證單張粘貼', isMajor: true, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '物品陳列', items: [
+                            { id: 'A7', text: 'Stand menu/聚光燈/架：乾淨、效能完好；不提供其他單張；Menu為最新版本', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'A8', text: '人形立牌/行銷活動架/百貨POP展示：乾淨，效能完好、完整站立', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'A9', text: '準備中/引導告示/公告：乾淨，效能完好，微效時間正確，請勿使用非公司公告，無手寫或白板告示', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'A10', text: '備位取號機/候位椅/候位凳：乾淨，效能完好，保養良好，防滑安全膠條滿，護欄完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'A11', text: '傘架/傘：乾淨（愛心傘上座擺放3支），效能完好；雨天需提供直傘專用黏扣帶，傘套安全重量56磅滿，1個護欄', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '招牌', items: [
+                            { id: 'A12', text: '招牌：乾淨、效能完好、文字完整無歪斜脫落', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'A13', text: '燈管：效能完好、亮度平均', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '燈箱形象輸出', items: [
+                            { id: 'A14', text: '燈箱片/壓條/電視播放器：乾淨，效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'A15', text: '燈管顏色：正確且亮度平均，效能完好', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '領台', items: [
+                            { id: 'A16', text: '外觀乾淨，無影響品牌形象之雜物及地毯（特殊定點除外），效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'A17', text: '菜單：乾淨，效能完好，嚴禁髒亂，不可自行修改或製作菜單', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'A18', text: '只陳列指定之物品，無擺放導覽與非公司提供之擺設；名片盒：乾淨、效能完好；無使用紙箱/盒收納物品', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]}
+                    ]},
+                    { id: 'clean_B', title: 'B. 收銀櫃檯 (10項)', tabName: 'B.收銀', maxScore: 12, groups: [
+                        { groupName: '收銀陳列', items: [
+                            { id: 'B1', text: '門片/牆面/體內/抽屜：乾淨，效能完好，物品擺放整齊且無使用紙箱/盒收納；無擺放飲料，非公務用品，雜物（員工物品憑專區放置）', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'B2', text: '無張貼，外露廢棄資料，改版訊息等公司資訊；張貼貼紙規章，需要告示不可讓顧客看到；無擺放非公司提供之擺設', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'B3', text: '百貨或集團各文宣/發票/收據/折價券：擺放整齊；顧客遺失物憑證登錄副聯發放', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'B4', text: '小費箱：乾淨，效能完好，不張貼任何貼紙或雜物，上方擺放紙巾，牙籤，且數量充足', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'B5', text: '垃圾桶：乾淨、無臭味，效能完好', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '音響/影音', items: [
+                            { id: 'B6', text: '音響設備：乾淨、效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'B7', text: '音樂音量播放適中', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '電話/無線', items: [{ id: 'B8', text: '乾淨，外觀無黏貼貼紙及標籤，效能完好，線路收納整齊', isMajor: false, status: 'pass', note: '', photo: null }]},
+                        { groupName: '對講機', items: [{ id: 'B9', text: '乾淨，效能完好，線路收納整齊', isMajor: false, status: 'pass', note: '', photo: null }]},
+                        { groupName: 'POS系統', items: [{ id: 'B10', text: '電腦主機/螢幕/收銀機/出單機/POS機：乾淨，效能完好，線路收納整齊', isMajor: false, status: 'pass', note: '', photo: null }]}
+                    ]},
+                    { id: 'clean_C', title: 'C. 備餐檯 (6項)', tabName: 'C.備餐', maxScore: 8, groups: [
+                        { groupName: '備餐檯', items: [
+                            { id: 'C1', text: '門片/牆面/體內/抽屜：乾淨，效能完好，物品擺放整齊，無雜物；紙巾/表格：保潔整齊，不可讓顧客看到', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'C2', text: '餐具/物品/容器：乾淨，乾透；物品擺放整齊，無使用紙箱/盒收納；帳夾：乾淨、效能完好、擺放整齊', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'C3', text: '低溫墊/加高墊：乾淨，不油膩，效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'C4', text: '酒精(瓶)：乾淨，效能完好，不與餐具/食材/耗材擺放；清潔用口巾/抹布：專用乾淨放置；營業時間禁無抹布清潔劑', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'C5', text: '垃圾桶：乾淨、無臭味，效能完好', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: 'POS系統', items: [{ id: 'C6', text: '電腦主機/螢幕/收銀機/出單機/POS機：乾淨，效能完好，線路收納整齊', isMajor: false, status: 'pass', note: '', photo: null }]}
+                    ]},
+                    { id: 'clean_D', title: 'D. 客席區 (18項)', tabName: 'D.客席', maxScore: 20, groups: [
+                        { groupName: '環境檢視', items: [
+                            { id: 'D1', text: '客席地板/地墊：乾燥、乾淨；樓梯處防滑條效能完好', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'D2', text: '牆面/牆角/圍欄/壁畫/擺飾/玻璃/窗台：乾淨、效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'D3', text: '窗簾/門簾：乾淨、效能完好、平均重疊無扭曲', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'D4', text: '出風口/天花板/燈飾裝飾物：乾淨、效能完好、無漏水、無蟲蟻網痕', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'D5', text: '木櫃/木棚/三層推車/備品櫃：乾淨，物品擺放整齊不混亂，效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'D6', text: '無擺放非營運相關之物品、雜物', isMajor: true, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '桌椅', items: [
+                            { id: 'D7', text: '立牌/餐桌紙(墊)：乾淨、效能完好（餐巾紙平整清潔放置且數量充足）', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'D8', text: '兒童椅：乾淨，效能完好，擺放整齊，堆疊高度不超過3張，防塵卡扣完好或特定固定牆面，不阻擋行門', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'D9', text: '客用桌/椅：無焦黑、無搖晃，排列整齊，靠背豎直一直線', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'D10', text: '餐具/餐墊/水杯：乾淨，無油漬、無缺角', isMajor: true, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '靠牆/沙發', items: [
+                            { id: 'D11', text: '客用桌/椅：乾淨，效能完好，無刮痕及堆疊；靠背、座椅、腳墊', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'D12', text: '沙發座墊：乾淨、平整，無皺褶，醬汁痕；後方平台/底層櫃面：乾燥、乾淨，效能完好', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '燈具/間接照明', items: [
+                            { id: 'D13', text: '燈具/間接照明：乾淨、效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'D14', text: '客席燈光照射最正中央', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '螢幕、壁飾', items: [{ id: 'D15', text: '螢幕：效能完好、牢固、無油漬；電子畫框畫面完整無出錯', isMajor: false, status: 'pass', note: '', photo: null }]},
+                        { groupName: '滅火器', items: [{ id: 'D16', text: '乾淨，效能完好，未過期、壓力正常', isMajor: false, status: 'pass', note: '', photo: null }]},
+                        { groupName: '冷氣', items: [
+                            { id: 'D17', text: '冷氣風口散熱效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'D18', text: '溫度22-24℃，濕度適中，空氣流通無臭味（當場店依賣場場地溫度為主）', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]}
+                    ]},
+                    { id: 'clean_E', title: 'E. 吧台窗口 (19項)', tabName: 'E.吧台', maxScore: 20, groups: [
+                        { groupName: '環境檢視', items: [
+                            { id: 'E1', text: '牆面/牆角/地板/地磚/玻璃：乾淨，效能完好；工作區域/冰櫃不濕滑，吊掛作業看板/告示/海報', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'E2', text: '出風口/天花板/燈具：乾淨、效能完好，無漏水', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'E3', text: '地板：乾燥、乾淨，排水口無堵塞，無回收物品囤積（若餐廳有積水，需立即處理，且有龐放小心地滑之告示）', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'E4', text: '入口處有地墊防滑、乾淨', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '物品陳列', items: [
+                            { id: 'E5', text: '洗手槽/水龍頭/水桶/水壺：效能完好；使用水槽濾網；洗手洗滌有清楚標示，無潮濕發霉狀況', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'E6', text: '工作檯面/餐架上之物品與器具：乾淨，效能完好，擺放整齊，無剝落損壞情形之雜物/飲料/私人物品；酒精(瓶)不與餐具/食材/耗材擺放', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'E7', text: '檔板上放置明確資料，保持乾淨整潔，日前公告先照先出原則', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'E8', text: '刀具/砧板/容器/水壺/茶桶：乾淨，有固定放置處；砧板無破損；黑/綠/黃/白/紅：乾淨，效能完好，無缺角', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'E9', text: '抹布使用遵守公告原則：口巾/抹布/專用洗滌刷清潔用具：乾淨，效能完好，放置專用盒（禁用科技海綿）；禁止亂放擦具', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'E10', text: '垃圾桶/廚餘桶：跨時段及非營業時間需加蓋，乾淨，無臭味，效能完好，垃圾放置蓋滿', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'E11', text: '對使用紙箱/盒收納餐具/物品/藥劑/容器，收納容器無發黴、無蟲蟻＝效能完好，嚴禁雜物直置', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'E12', text: '所有食材/半成品/醬料：皆加蓋，不得暴露散放，未落地置放；開拆封食材/半成品/醬料：標籤完整，且貼上保存日期標示貼紙', isMajor: true, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '設備效能', items: [
+                            { id: 'E13', text: '出水機：乾淨，效能完好，線路收納整齊', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'E14', text: '製冰機/儲冰桶：乾淨、效能完好，上方無擺放任何雜物；冰勺放置冰勺水罐', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'E15', text: '開水機/茶專用機：乾淨，效能完好，出水量正常，上方無擺放其他物品，有張貼【小心高溫】警示標語，標示確定完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'E16', text: '封口機：乾淨，效能完好；冰淋機：乾淨，效能完好，上方無擺放其他物品', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'E17', text: '煮飯鍋/保溫飯鍋/黃色保溫箱/微波爐：乾淨，效能完好，上方無擺放其他物品；飯匙/飯盒：乾淨', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'E18', text: '冰箱設備：乾淨，效能完好，物品丸進丸出，條理分明擺放整齊；私人物品嚴禁擺放；溫度冷藏<4~6℃，冷凍<-18℃', isMajor: true, status: 'pass', note: '', photo: null }
+                        ]}
+                    ]},
+                    { id: 'clean_F', title: 'F. 後場倉儲物料 (8項)', tabName: 'F.後場', maxScore: 10, groups: [
+                        { groupName: '環境檢視', items: [
+                            { id: 'F1', text: '牆面/地板：乾淨，無臭味，效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'F2', text: '出風口/天花板/燈具：乾淨，無漏水，效能完好', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '辦公室休息區', items: [
+                            { id: 'F3', text: '掃具用品：專屬區域擺放，擺放整齊，乾淨；拖把：擰乾，掛牆面，不得直接放置地板上或水槽中', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'F4', text: '金庫/電腦伺服器：乾淨，線路收納整齊，效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'F5', text: '辦公型/層架/公務櫃/物品：乾淨、陳列整齊', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'F6', text: '垃圾桶：乾淨，無臭味，效能完好', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '倉庫物料區', items: [
+                            { id: 'F7', text: '貨品層架：乾淨，效能完好；儲物空間：乾淨、乾燥；閒置及備用物品：妥善放置，雜物：私人物品專區擺放', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'F8', text: '貨物物品上架：食品使用棧板離地放置，勿直接置於地面；藥劑/清潔劑：專區置放，且置於最底層；貨品堆疊整齊', isMajor: true, status: 'pass', note: '', photo: null }
+                        ]}
+                    ]},
+                    { id: 'clean_G', title: 'G. 洗洗手間 (20項)', tabName: 'G.洗洗手間', maxScore: 10, groups: [
+                        { groupName: '指引標示', items: [{ id: 'G1', text: '【洗洗手間】指示標牌乾淨效能完好', isMajor: true, status: 'pass', note: '', photo: null }]},
+                        { groupName: '環境檢視', items: [
+                            { id: 'G2', text: '瞬間感受洗手間品牌氣息溫度適宜、無異味', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G3', text: '入口地毯乾淨、效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G4', text: '門板/標示牌/門鎖/門栓：乾淨、效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G5', text: '地板：乾燥、乾淨，排水口無積水，效能完好', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'G6', text: '牆面/牆角：乾淨、效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G7', text: '出風口/天花板/燈具：乾淨、效能完好', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '物品陳列', items: [
+                            { id: 'G8', text: '洗手台/水龍頭/水槽/鏡面/每小時洗手洗滌步驟標示：乾淨、效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G9', text: '擦手紙盒內擦手紙平整，數量滿滿，上方不得擺放任何物品', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G10', text: '擦手紙盒內擦手紙數量平整，不低於0.5公分，外觀乾淨，平整，上方不得擺放任何物品', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G11', text: '洗手液器瓶面無垢，效能完好，補充充足', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G12', text: '洗手乳有備量，外觀乾淨、效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G13', text: '消毒酒精有備量，外觀乾淨、效能完好', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '設備效能', items: [
+                            { id: 'G14', text: '擦手紙/小毛巾：乾淨、無垢', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'G15', text: '垃圾桶/蓋：乾淨、效能完好；垃圾袋裝入後平整緊貼垃圾桶緣溢出，且袋口邊緣整齊', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G16', text: '洗手台周邊：乾淨、乾燥無水垢', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G17', text: '自動沖水桶內均有水，外觀乾淨、效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G18', text: '消毒噴霧機內均有藥劑，外觀乾淨、效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G19', text: '烘手台：乾淨、效能完好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'G20', text: '廁所檢核表張貼於牆面填寫清晰符合實際，且無過期未簽名核對', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]}
+                    ]},
+                    { id: 'clean_obs', title: '清潔特殊觀察紀錄', tabName: '特殊觀察', isObservation: true }
+                ]);
+
+                const serviceCategories = ref([
+                    { id: 'service_A', title: 'A. 接待服務 (13項)', tabName: 'A.接待', maxScore: 20, groups: [
+                        { groupName: '電話檢視', items: [
+                            { id: 'SA1', text: '電話於三聲內接起，服務人員口齒清晰語速適中的自我介紹並報出店名', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SA2', text: '清楚重複記錄顧客訂位資料與特殊需求（如兒童餐具/兒童座椅等），若有用餐時段或包廂低消限制有清楚說明', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SA3', text: '若有換人接聽，人員有說出問候語，並確實交接顧客資訊與需求', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SA4', text: '無法提供訂位時，主動引導顧客其他日期/時段/電話候位/其他分店', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SA5', text: '結束電話前，親切關心顧客諮詢：是否有其他需要服務的呢？並致上感謝或歡迎等問候語', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SA6', text: '通話過程中，服務人員仔細聆聽、應對得體、主動解決顧客需求，說話有精神', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '迎賓帶位', items: [
+                            { id: 'SA7', text: '靠近店門口或迎賓櫃檯時，服務人員能立即向前招呼，親切微笑目光接觸', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SA8', text: '若需候位，積極邀請顧客候位登記/引導抽取號碼牌，並於登記時清楚說明通知方式', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SA9', text: '若需候位，在門口或候位區等待時，有先-簡單向顧客介紹菜單/菜色，並感謝顧客等待', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SA10', text: '帶位途中，擦身而過或有眼神接觸的服務人員能主動打招呼，讓顧客感受歡迎', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SA11', text: '帶位時確認顧客跟上、維持2-3步距離，遇階梯或狹小空間，能夠提醒，並說明洗手間位置', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SA12', text: '就座後服務人員熱情且有活力介紹菜單、邀請加入會員、活動介紹，提醒用餐時間', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SA13', text: '（溜）就座後服務人員主動說明茶資並介紹茶種（溜、上、湯）就座後服務人員主動說明茶水，並主動介紹點餐方式（QRcode/平板/紙本）', isMajor: true, status: 'pass', note: '', photo: null }
+                        ]}
+                    ]},
+                    { id: 'service_B', title: 'B. 外場服務 (28項)', tabName: 'B.外場', maxScore: 50, groups: [
+                        { groupName: '菜單介紹點餐', items: [
+                            { id: 'SB1', text: '入座2分鐘內有親切詢問「是否需要為您介紹菜單？」或關心顧客線上點餐進度', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SB2', text: '若顧客需要介紹，服務人員主動詢問喜愛的類型與忌口（如海鮮、肉類、口味、份量等）', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB3', text: '若顧客需要協助，能夠介紹餐點或引導點用受歡迎菜色，展現專業推薦協助顧客點餐', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB4', text: '服務過程中，服務人員是否態度親切專業和顧客有眼神接觸，令人感受良好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB5', text: '核對菜色或點餐後有向顧客說明「稍後有需要服務可以找我/我們」；包廂服務有自我介紹；若有行銷活動能主動介紹', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SB6', text: '若顧客使用單點，有引導介紹副食白飯/小菜/飲料/甜點，讓人覺得有吸引力', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB7', text: '重複菜色時，清楚說出菜色全名與特殊需求，且確實送上點餐單，讓顧客確認餐點無誤', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB8', text: '顧客餐點點過少或過多時，適度進行份量提醒，確保顧客用餐體驗良好', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '桌邊服務', items: [
+                            { id: 'SB9', text: '顧客需要服務時，服務人員能即時回應顧客', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB10', text: '用餐過程中，主動留意顧客茶水/薑絲/客用水是否需要補充，若顧客提出要求，服務人員能立即協助沖熱/補充', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SB11', text: '顧客餐盤中有食物殘渣或湯汁時，服務人員會主動詢問是否更換盤子，且為顧客整理桌面', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB12', text: '餐後更換，沒有點用甜點時，能主動推薦招牌甜點', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB13', text: '送上甜點前，服務人員能主動詢問確認並整理桌面', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SB14', text: '餐後服務人員能主動送上帳單並邀請顧客填寫問卷', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB15', text: '用餐過程中，當服務人員前來提供服務或互動時，態度親切且與顧客有眼神接觸', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB16', text: '顧客離座後，使用黑色清潔抹布將桌面油污及食物殘渣擦拭乾淨，並使用75%酒精噴霧滅桌面，再以藍色消毒抹布擦拭乾淨', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '結帳送客', items: [
+                            { id: 'SB17', text: '臨櫃結帳時，立即有服務人員向前', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB18', text: '結帳人員親切關心顧客用餐狀況', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SB19', text: '結帳人員主動確認會員或聯名卡協助累積、折抵點數，若無會員能主動邀請顧客加入（並能說明會員優惠與集點方式）', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB20', text: '結帳時有主動與顧客確認消費金額/統編/停車折抵/商場會員集點等相關資訊，且結帳金額無誤', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB21', text: '結帳完畢，結帳人員有微笑致謝親切致謝，邀請再次光臨，與顧客有眼神接觸', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SB22', text: '離店時，擦身而過或有眼神接觸的服務人員能親切致謝並邀請再次光臨百度光臨', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]},
+                        { groupName: '服務人員', items: [
+                            { id: 'SB23', text: '主管與整體服務人員是否面帶笑容、互動時能有眼神接觸，令人感受良好', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB24', text: '主管與整體服務人員的服裝儀容符合標準且整潔清潔', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB25', text: '主管與整體服務人員精神抖擻沒有散漫的狀況', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB26', text: '主管有於用餐過程中，特別前來關心用餐狀況；前來致意時，令顧客感受良好且有邀請再次前來用餐', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SB27', text: '服務人員間合作順利、團隊默契佳', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SB28', text: '主管與服務人員作業時，動作輕巧，儀態合宜，不影響顧客用餐，且皆符合衛生原則', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]}
+                    ]},
+                    { id: 'service_C', title: 'C. 菜窗口 (5項)', tabName: 'C.菜口', maxScore: 10, groups: [
+                        { groupName: '菜口人員', items: [
+                            { id: 'SC1', text: '若有白飯需正常供應，且熱度可接受，不會摻雜鍋底飯（黃而乾硬），也無黏成一團', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SC2', text: '整體菜色熱度可接受', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SC3', text: '餐盤的菜盤邊緣、盤底、無醬汁滴落或沾附，餐盤乾淨無裂痕、缺角，且人員會手持餐具把手，不直接接觸食材或沾醬汁', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SC4', text: '確認菜色份量、盤溫、溫度及特殊要求正確，並正確置放佐餐具於佐餐具盤，佐餐具不得直接置於托盤上', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SC5', text: '飲料品項正確，無溢出', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]}
+                    ]},
+                    { id: 'service_D', title: 'D. 跑菜 (7項)', tabName: 'D.跑菜', maxScore: 10, groups: [
+                        { groupName: '上菜', items: [
+                            { id: 'SD1', text: '（湯）上菜速度與上菜順序正確', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SD2', text: '菜色上齊時，服務人員有主動告知顧客', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SD3', text: '餐點上桌後，服務人員才清楚說明餐點名稱，並提醒顧客小心燙或趁熱吃，有笑容且顧客有眼神接觸、語調自信有力', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SD4', text: '送上餐點時，應側身上菜，並避免從顧客頭頂、長者、孩童面上菜', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SD5', text: '上菜時主動調整位置，非被動等顧客自行移餐，且能主動協助顧客整理桌面、更換小盤、收空盤', isMajor: true, status: 'pass', note: '', photo: null },
+                            { id: 'SD6', text: '上菜時人員是否動作輕巧，手部不直接接觸餐點', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SD7', text: '上菜時確實執行出單作業，確保供餐內容是否正確無誤', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]}
+                    ]},
+                    { id: 'service_E', title: 'E. 手冊表單檢視 (3項)', tabName: 'E.表單', maxScore: 10, groups: [
+                        { groupName: '手冊表單', items: [
+                            { id: 'SE1', text: '標準流程作業手冊：版本正確、乾淨、無缺頁', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SE2', text: '菜色品質檢視手冊：版本正確、乾淨、無缺頁', isMajor: false, status: 'pass', note: '', photo: null },
+                            { id: 'SE3', text: '當店服務稽核報告、雙月服務稽核成果報告與服務小學堂，三份檔案完整列印、宣達，並經同仁閱讀簽名', isMajor: false, status: 'pass', note: '', photo: null }
+                        ]}
+                    ]},
+                    { id: 'service_obs', title: '服務特殊觀察紀錄', tabName: '特殊觀察', isObservation: true }
+                ]);
+
+                const availableStores = computed(() => basicInfo.value.brand ? brandStoreSettings[basicInfo.value.brand] || [] : []);
+                const isBasicInfoValid = computed(() => basicInfo.value.date && basicInfo.value.brand && basicInfo.value.store && basicInfo.value.manager && basicInfo.value.dutyManager && basicInfo.value.auditor && basicInfo.value.auditType);
+                const isBasicInfoComplete = computed(() => activeTab.value !== 'setup');
+                const currentCategories = computed(() => currentSection.value === 'clean' ? cleanCategories.value : serviceCategories.value);
+                const currentCategory = computed(() => currentCategories.value[currentCategoryIndex.value] || currentCategories.value[0]);
+
+                const getCategoryScore = (cat) => {
+                    if (cat.isObservation) return 0;
+                    let total = cat.maxScore;
+                    cat.groups.forEach(g => g.items.forEach(item => {
+                        if (item.status === 'fail') total -= cat.id.startsWith('clean_') ? (item.isMajor ? 4 : 2) : (item.isMajor ? 8 : 5);
+                    }));
+                    return Math.max(0, total);
+                };
+
+                const cleanWeightedScore = computed(() => {
+                    let e = 0, p = 0;
+                    cleanCategories.value.forEach(cat => { if (!cat.isObservation) { if (cat.id === 'clean_G' && !basicInfo.value.hasRestroom) return; e += getCategoryScore(cat); p += cat.maxScore; }});
+                    return p > 0 ? Math.round((e / p) * 40) : 0;
+                });
+                const serviceWeightedScore = computed(() => {
+                    let e = 0, p = 0;
+                    serviceCategories.value.forEach(cat => { if (!cat.isObservation) { e += getCategoryScore(cat); p += cat.maxScore; }});
+                    return p > 0 ? Math.round((e / p) * 60) : 0;
+                });
+                const overallScore = computed(() => cleanWeightedScore.value + serviceWeightedScore.value);
+
+                const failedItems = computed(() => {
+                    const list = [];
+                    [...cleanCategories.value, ...serviceCategories.value].forEach(cat => {
+                        if (!cat.isObservation) {
+                            if (cat.id === 'clean_G' && !basicInfo.value.hasRestroom) return;
+                            cat.groups.forEach(g => g.items.forEach(item => { if (item.status === 'fail') list.push({ category: cat.title.split('.')[0], id: item.id, question: item.text, note: item.note, photo: item.photo }); }));
+                        }
+                    });
+                    return list;
+                });
+
+                const allItemsList = computed(() => {
+                    const list = [];
+                    [...cleanCategories.value, ...serviceCategories.value].forEach(cat => {
+                        if (!cat.isObservation) {
+                            cat.groups.forEach(g => g.items.forEach(item => {
+                                let s = item.status; if (cat.id === 'clean_G' && !basicInfo.value.hasRestroom) s = 'exempt';
+                                list.push({ category: cat.tabName, groupName: g.groupName, id: item.id, question: item.text, isMajor: item.isMajor, status: s, note: item.note, photo: item.photo });
+                            }));
+                        }
+                    });
+                    return list;
+                });
+
+                const isCategoryCompleted = (cat) => {
+                    if (cat.isObservation) return true;
+                    if (cat.id === 'clean_G' && !basicInfo.value.hasRestroom) return true;
+                    for (const g of cat.groups) {
+                        for (const item of g.items) {
+                            if (item.status === null) return false;
+                        }
+                    }
+                    return true;
+                };
+
+                const validateAllRequiredFields = () => {
+                    for (let cIdx = 0; cIdx < cleanCategories.value.length; cIdx++) {
+                        const cat = cleanCategories.value[cIdx];
+                        if (cat.isObservation) continue;
+                        if (cat.id === 'clean_G' && !basicInfo.value.hasRestroom) continue;
+                        for (let gIdx = 0; gIdx < cat.groups.length; gIdx++) {
+                            const group = cat.groups[gIdx];
+                            for (let iIdx = 0; iIdx < group.items.length; iIdx++) {
+                                const item = group.items[iIdx];
+                                if (item.status === null) {
+                                    activeTab.value = 'audit';
+                                    currentSection.value = 'clean';
+                                    currentCategoryIndex.value = cIdx;
+                                    alert(`【清潔檢視 - ${cat.title}】\n項目 【${item.id}】 尚未評分！`);
+                                    return false;
+                                }
+                                if (item.status === 'fail') {
+                                    if (!item.note || item.note.trim() === '') {
+                                        activeTab.value = 'audit';
+                                        currentSection.value = 'clean';
+                                        currentCategoryIndex.value = cIdx;
+                                        alert(`【清潔檢視 - ${cat.title}】\n項目 【${item.id}】 選擇不合格，必須填寫「缺失說明」！`);
+                                        return false;
+                                    }
+                                    if (!item.photo) {
+                                        activeTab.value = 'audit';
+                                        currentSection.value = 'clean';
+                                        currentCategoryIndex.value = cIdx;
+                                        alert(`【清潔檢視 - ${cat.title}】\n項目 【${item.id}】 選擇不合格，清潔類必須上傳「現場照片」！`);
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    for (let cIdx = 0; cIdx < serviceCategories.value.length; cIdx++) {
+                        const cat = serviceCategories.value[cIdx];
+                        if (cat.isObservation) continue;
+                        for (let gIdx = 0; gIdx < cat.groups.length; gIdx++) {
+                            const group = cat.groups[gIdx];
+                            for (let iIdx = 0; iIdx < group.items.length; iIdx++) {
+                                const item = group.items[iIdx];
+                                if (item.status === null) {
+                                    activeTab.value = 'audit';
+                                    currentSection.value = 'service';
+                                    currentCategoryIndex.value = cIdx;
+                                    alert(`【服務檢視 - ${cat.title}】\n項目 【${item.id}】 尚未評分！`);
+                                    return false;
+                                }
+                                if (item.status === 'fail') {
+                                    if (!item.note || item.note.trim() === '') {
+                                        activeTab.value = 'audit';
+                                        currentSection.value = 'service';
+                                        currentCategoryIndex.value = cIdx;
+                                        alert(`【服務檢視 - ${cat.title}】\n項目 【${item.id}】 選擇不合格，必須填寫「缺失說明」！`);
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    return true;
+                };
+
+                const onBrandChange = () => { basicInfo.value.store = ''; };
+                
+                const startAudit = () => {
+                    if (isBasicInfoValid.value) {
+                        activeTab.value = 'audit';
+                        currentSection.value = 'clean';
+                        currentCategoryIndex.value = 0;
+                        window.scrollTo(0, 0);
+                    }
+                };
+
+                const switchSection = (section) => {
+                    if (section === 'summary') { 
+                        if (!validateAllRequiredFields()) return;
+                        activeTab.value = 'summary'; 
+                        currentSection.value = 'summary'; 
+                        nextTick(() => initSignaturePad()); 
+                    } else { 
+                        activeTab.value = 'audit'; 
+                        currentSection.value = section; 
+                        currentCategoryIndex.value = 0; 
+                    }
+                    window.scrollTo(0, 0);
+                };
+
+                const selectCategory = (index) => { 
+                    currentCategoryIndex.value = index; 
+                    window.scrollTo(0, 0); 
+                };
+
+                const setItemStatus = (item, status) => { 
+                    item.status = status; 
+                    if (status === 'pass') { 
+                        item.note = ''; 
+                        item.photo = null; 
+                    } 
+                };
+
+                const handlePhotoUpload = (event, item) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas'); 
+                                let width = img.width, height = img.height; 
+                                const max_size = 800;
+                                if (width > height) { 
+                                    if (width > max_size) { height *= max_size / width; width = max_size; } 
+                                } else { 
+                                    if (height > max_size) { width *= max_size / height; height = max_size; } 
+                                }
+                                canvas.width = width; 
+                                canvas.height = height; 
+                                canvas.getContext('2d').drawImage(img, 0, 0, width, height); 
+                                item.photo = canvas.toDataURL('image/jpeg', 0.6);
+                            };
+                            img.src = e.target.result;
+                        }; reader.readAsDataURL(file);
+                    }
+                };
+
+                const initSignaturePad = () => {
+                    nextTick(() => {
+                        const canvas = signatureCanvas.value; 
+                        if (!canvas) return; 
+                        const ctx = canvas.getContext('2d');
+                        
+                        canvas.width = canvas.parentElement.clientWidth || 340;
+                        canvas.height = 120;
+
+                        const getPos = (e) => { 
+                            const rect = canvas.getBoundingClientRect(); 
+                            const clientX = e.touches ? e.touches[0].clientX : e.clientX; 
+                            const clientY = e.touches ? e.touches[0].clientY : e.clientY; 
+                            return { x: clientX - rect.left, y: clientY - rect.top }; 
+                        };
+
+                        const start = (e) => { 
+                            e.preventDefault(); 
+                            isDrawing = true; 
+                            const pos = getPos(e); 
+                            ctx.beginPath(); 
+                            ctx.moveTo(pos.x, pos.y); 
+                        };
+
+                        const move = (e) => { 
+                            if (!isDrawing) return; 
+                            e.preventDefault(); 
+                            const pos = getPos(e); 
+                            ctx.lineTo(pos.x, pos.y); 
+                            ctx.strokeStyle = '#222'; 
+                            ctx.lineWidth = 3; 
+                            ctx.lineCap = 'round'; 
+                            ctx.lineJoin = 'round'; 
+                            ctx.stroke(); 
+                            hasSignature.value = true; 
+                        };
+
+                        const stop = () => { 
+                            isDrawing = false; 
+                        };
+
+                        canvas.onmousedown = null; canvas.onmousemove = null; canvas.onmouseup = null; canvas.onmouseout = null;
+                        canvas.ontouchstart = null; canvas.ontouchmove = null; canvas.ontouchend = null;
+
+                        canvas.addEventListener('mousedown', start); 
+                        canvas.addEventListener('mousemove', move); 
+                        canvas.addEventListener('mouseup', stop); 
+                        canvas.addEventListener('mouseout', stop);
+
+                        canvas.addEventListener('touchstart', start, { passive: false }); 
+                        canvas.addEventListener('touchmove', move, { passive: false }); 
+                        canvas.addEventListener('touchend', stop);
+                    });
+                };
+
+                const clearSignature = () => { 
+                    const canvas = signatureCanvas.value; 
+                    if (canvas) { 
+                        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height); 
+                        hasSignature.value = false; 
+                    } 
+                };
+
+                const submitReport = async () => {
+                    if (!validateAllRequiredFields()) return;
+
+                    isSubmitting.value = true;
+                    const payload = {
+                        auditData: basicInfo.value, 
+                        overallScore: overallScore.value, 
+                        cleanWeightedScore: cleanWeightedScore.value, 
+                        serviceWeightedScore: serviceWeightedScore.value,
+                        failedItems: failedItems.value, 
+                        allItems: allItemsList.value, 
+                        signature: signatureCanvas.value ? signatureCanvas.value.toDataURL('image/png') : ''
+                    };
+
+                    try {
+                        const response = await fetch(googleScriptUrl, { method: 'POST', body: JSON.stringify(payload) });
+                        const resText = await response.text();
+                        
+                        if (resText.includes('<!DOCTYPE html>') || resText.includes('<html')) {
+                            throw new Error('伺服器連線遭拒，請確認 Google Apps Script 的權限是否已設定為公式「所有人 (Anyone)」。');
+                        }
+
+                        let resultData = {};
+                        try { resultData = JSON.parse(resText); } 
+                        catch (e) { throw new Error("後台回傳資料格式錯誤，請檢查執行紀錄。\n回傳內容：" + resText.substring(0, 100)); }
+
+                        if (resultData.result === 'success') {
+                            alert(`🎉 報表成功上傳與產出！\n\n【報告單號】: ${resultData.auditId}\n【目標試算表】: ${resultData.spreadsheetName}`);
+                        } else {
+                            throw new Error(resultData.error || '後台執行發生未知錯誤');
+                        }
+                    } catch (err) {
+                        alert(`❌ 傳送失敗！\n\n原因：${err.message}`);
+                    } finally {
+                        isSubmitting.value = false;
+                    }
+                };
+
+                return { activeTab, currentSection, currentCategoryIndex, basicInfo, brandStoreSettings, availableStores, isBasicInfoValid, isBasicInfoComplete, currentCategories, currentCategory, cleanCategories, serviceCategories, getCategoryScore, cleanWeightedScore, serviceWeightedScore, overallScore, failedItems, isSubmitting, signatureCanvas, onBrandChange, startAudit, switchSection, selectCategory, setItemStatus, handlePhotoUpload, clearSignature, submitReport, isCategoryCompleted };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
